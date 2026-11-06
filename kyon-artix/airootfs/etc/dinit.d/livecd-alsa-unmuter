@@ -1,0 +1,14 @@
+# Dinit service file for livecd ALSA unmuter
+# Location: /etc/dinit.d/livecd-alsa-unmuter
+
+type = process
+description = "Unmute ALSA sound cards"
+depends = dinit-service-manager
+command = /usr/local/bin/livecd-sound
+
+# Run once and exit
+# This is a oneshot service
+type = internal
+
+# Run after the service manager is ready
+after = dinit-service-manager

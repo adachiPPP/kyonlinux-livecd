@@ -1,0 +1,8 @@
+type = process
+command = /usr/sbin/sshd -D -e
+restart = true
+kill-signal = TERM
+
+# sshd needs networking and the crypto stack
+depends = network
+depends = dfs

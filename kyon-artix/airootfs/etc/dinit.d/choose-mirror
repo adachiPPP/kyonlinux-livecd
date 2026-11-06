@@ -1,0 +1,12 @@
+# Dinit service file for mirror selection
+# Location: /etc/dinit.d/choose-mirror
+
+type = process
+description = "Choose a package mirror"
+depends = dinit-service-manager
+command = /usr/local/bin/choose-mirror
+
+# Run once and exit
+type = internal
+
+after = dinit-service-manager

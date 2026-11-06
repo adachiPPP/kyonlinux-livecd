@@ -1,0 +1,12 @@
+# Dinit service file for pacman keyring initialization
+# Location: /etc/dinit.d/pacman-init
+
+type = process
+description = "Initialize pacman keyring"
+depends = dinit-service-manager
+command = /usr/bin/sh -c "pacman-key --init && pacman-key --populate"
+
+# Run once and exit
+type = internal
+
+after = dinit-service-manager

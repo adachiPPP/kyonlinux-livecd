@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure the installed kernel actually reached /boot before building the
+# initramfs: when the target already contains the same linux package (copied
+# in by unpackfs), pacman's --needed skips the transaction and the
+# 90-mkinitcpio-install hook never copies vmlinuz-linux into place.
+if [ ! -f /boot/vmlinuz-linux ]; then
+    k="$(ls -d /usr/lib/modules/*/ 2>/dev/null | sort | tail -n 1 || true)"
+    if [ -n "$k" ] && [ -f "${k}vmlinuz" ]; then
+        install -Dm644 "${k}vmlinuz" /boot/vmlinuz-linux
+    fi
+fi
+
+# Use the real binary explicitly.
+/usr/bin/mkinitcpio -P

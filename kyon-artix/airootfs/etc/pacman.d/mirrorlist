@@ -1,0 +1,19 @@
+## Kyon Linux (Artix/Dinit) mirrorlist
+
+## Worldwide
+Server = http://mirror1.artixlinux.org/repos/$repo/os/$arch
+Server = http://mirror2.artixlinux.org/repos/$repo/os/$arch
+Server = https://mirrors.dotsrc.org/artix-linux/repos/$repo/os/$arch
+
+## Europe
+Server = https://ftp.uni-tuebingen.de/artixlinux/repos/$repo/os/$arch
+Server = https://artixlinux.mailtunnel.eu/repos/$repo/os/$arch
+Server = https://artix.rw-net.de/repos/$repo/os/$arch
+
+## North America
+Server = https://mirror.riseup.net/artixlinux/repos/$repo/os/$arch
+Server = https://mirror.clarkson.edu/artix-linux/repos/$repo/os/$arch
+
+## Asia
+Server = https://mirror.sjtu.edu.cn/artixlinux/repos/$repo/os/$arch
+Server = https://mirrors.tuna.tsinghua.edu.cn/artixlinux/$repo/os/$arch

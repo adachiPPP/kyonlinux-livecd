@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+
+# fix-boot-media - locate the boot media files for Ventoy / Rufus ISO mode / dd
+#
+# Standard archiso mounts the boot media at /run/archiso/bootmnt/ and places
+# the squashfs at /run/archiso/bootmnt/<archisobasedir>/x86_64/airootfs.sfs.
+# Kyon Artix uses archisobasedir=artix (install_dir in profiledef.sh).
+# Ventoy, Rufus ISO mode, and some dd'd USB setups can make the live system
+# boot without that exact path being present, even though the ISO is fully
+# readable. This script locates airootfs.sfs (and vmlinuz-linux) wherever they
+# are on the running system and creates the expected paths so that Calamares'
+# unpackfs module can find them.
+#
+# This is NOT a substitute for writing the ISO correctly in the first place.
+# If you used dd, make sure you wrote the whole device (not a partition) and
+# ran sync afterwards; if the device is too small for the ISO, the end of the
+# squashfs may be missing and no amount of searching will help.
+
+set -euo pipefail
+
+install_dir="artix"
+arch="x86_64"
+
+EXPECTED_SFS="/run/archiso/bootmnt/${install_dir}/${arch}/airootfs.sfs"
+EXPECTED_VMLINUZ="/run/archiso/bootmnt/${install_dir}/boot/${arch}/vmlinuz-linux"
+
+log() { printf 'fix-boot-media: %s\n' "$*" >&2; }
+
+# ── 1. Find airootfs.sfs ──────────────────────────────────────────────────
+
+possible_sfs_basenames=(
+    "airootfs.sfs"
+    "filesystem.squashfs"
+)
+
+find_sfs() {
+    # Already at the expected path?
+    [ -f "$EXPECTED_SFS" ] && { echo "$EXPECTED_SFS"; return 0; }
+
+    local found="" dir base
+
+    # Walk the usual archiso / Ventoy / Rufus mount points looking for any
+    # known squashfs name inside an <archisobasedir>/<arch>/ tree.
+    for dir in /run/archiso/bootmnt /run/miso /run/media /mnt /media /run/archiso; do
+        [ -d "$dir" ] || continue
+        for base in "${possible_sfs_basenames[@]}"; do
+            found=$(find "$dir" -maxdepth 6 -name "$base" -type f 2>/dev/null | head -1)
+            [ -n "$found" ] && { echo "$found"; return 0; }
+        done
+    done
+
+    # Check every mounted filesystem from /proc/mounts.
+    while read -r _ mountpoint _ _ _ _; do
+        case "$mountpoint" in
+            /proc|/sys|/dev|/run/udev|/run/lock|/tmp) continue ;;
+        esac
+        [ -d "$mountpoint" ] || continue
+        for base in "${possible_sfs_basenames[@]}"; do
+            found=$(find "$mountpoint" -maxdepth 6 -name "$base" -type f 2>/dev/null | head -1)
+            [ -n "$found" ] && { echo "$found"; return 0; }
+        done
+    done < /proc/mounts
+
+    # Broad search from / (skipping virtual filesystems).
+    for base in "${possible_sfs_basenames[@]}"; do
+        found=$(find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune \
+            -o -name "$base" -type f -print 2>/dev/null | head -1)
+        [ -n "$found" ] && { echo "$found"; return 0; }
+    done
+
+    return 1
+}
+
+# ── 2. Find vmlinuz-linux ────────────────────────────────────────────────
+
+find_vmlinuz() {
+    [ -f "$EXPECTED_VMLINUZ" ] && { echo "$EXPECTED_VMLINUZ"; return 0; }
+
+    local found="" search_root
+
+    if [ -n "${SFS_FOUND:-}" ]; then
+        search_root=$(dirname "$SFS_FOUND")
+        while [ "$search_root" != "/" ] && [ "$search_root" != "$search_root/.." ]; do
+            found=$(find "$search_root" -maxdepth 5 -name "vmlinuz-linux" -type f 2>/dev/null | head -1)
+            [ -n "$found" ] && { echo "$found"; return 0; }
+            search_root=$(dirname "$search_root")
+        done
+    fi
+
+    for dir in /run/archiso/bootmnt /run/miso /run/media /mnt /media /run/archiso; do
+        [ -d "$dir" ] || continue
+        found=$(find "$dir" -maxdepth 6 -name "vmlinuz-linux" -type f 2>/dev/null | head -1)
+        [ -n "$found" ] && { echo "$found"; return 0; }
+    done
+
+    while read -r _ mountpoint _ _ _ _; do
+        case "$mountpoint" in
+            /proc|/sys|/dev|/run/udev|/run/lock|/tmp) continue ;;
+        esac
+        [ -d "$mountpoint" ] || continue
+        found=$(find "$mountpoint" -maxdepth 6 -name "vmlinuz-linux" -type f 2>/dev/null | head -1)
+        [ -n "$found" ] && { echo "$found"; return 0; }
+    done < /proc/mounts
+
+    return 1
+}
+
+# ── 3. Create the expected paths ──────────────────────────────────────────
+
+place_file() {
+    local src="$1" dest="$2"
+    if [ -f "$dest" ]; then
+        log "already exists: $dest"
+        return 0
+    fi
+    [ -f "$src" ] || return 1
+    mkdir -p "$(dirname "$dest")"
+    if ln "$src" "$dest" 2>/dev/null; then
+        log "linked $dest -> $src"
+    elif ln -sf "$src" "$dest" 2>/dev/null; then
+        log "symlinked $dest -> $src"
+    else
+        cp -f "$src" "$dest" && log "copied $dest <- $src"
+    fi
+}
+
+SFS_FOUND=""
+SFS_FOUND=$(find_sfs) || true
+if [ -z "$SFS_FOUND" ]; then
+    log "ERROR: airootfs.sfs not found anywhere on the running system"
+    log "       unpackfs will try its own fallback paths if available."
+    exit 0
+fi
+
+log "found airootfs.sfs at $SFS_FOUND"
+
+if command -v unsquashfs >/dev/null 2>&1; then
+    if ! unsquashfs -l "$SFS_FOUND" >/dev/null 2>&1; then
+        log "WARNING: airootfs.sfs exists but unsquashfs cannot read its index."
+    fi
+fi
+
+place_file "$SFS_FOUND" "$EXPECTED_SFS"
+
+VMLINUXINUZ_FOUND=""
+VMLINUXINUZ_FOUND=$(find_vmlinuz) || true
+if [ -n "$VMLINUXINUZ_FOUND" ]; then
+    log "found vmlinuz-linux at $VMLINUXINUZ_FOUND"
+    place_file "$VMLINUXINUZ_FOUND" "$EXPECTED_VMLINUZ"
+else
+    log "WARNING: vmlinuz-linux not found (packages step will install the kernel)"
+fi
+
+exit 0

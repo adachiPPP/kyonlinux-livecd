@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+# Runs chrooted in the target AFTER the `packages` step. This replaces the
+# stock `displaymanager` module entirely (see shellprocess_desktop_cleanup.conf
+# for why that module is not in the sequence).
+#
+# ADAPTED FOR DINIT: uses dinit symlinks instead of systemctl enable/disable.
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Packages that ship on the live ISO for the autologin Plasma session but are
+# NOT wanted by non-KDE desktops.
+# NOTE: sddm is intentionally NOT listed here. All desktops now use SDDM.
+live_kde_pkgs="plasma-desktop sddm-kcm kscreen powerdevil plasma-nm plasma-pa kde-gtk-config spectacle ark"
+
+# Remove dinit symlinks for live-only state.
+# On dinit, enabling means symlinking from /usr/lib/dinit.d/ to /etc/dinit.d/.
+rm -f /etc/dinit.d/sddm
+rm -f /etc/dinit.d/early/00-sddm
+
+# Remove a set of packages, only the ones actually installed, never failing
+# the install if pacman complains.
+remove_pkgs() {
+    local to_remove=""
+    for p in "$@"; do
+        if pacman -Q "$p" >/dev/null 2>&1; then
+            to_remove="$to_remove $p"
+        fi
+    done
+    [ -n "$to_remove" ] && pacman -Rns --noconfirm $to_remove >/dev/null 2>&1 || true
+}
+
+# Helper: enable a dinit service by creating a symlink from /usr/lib/dinit.d/
+# to /etc/dinit.d/.  This is the dinit equivalent of `systemctl enable`.
+enable_dinit() {
+    local svc="$1"
+    local src="/usr/lib/dinit.d/$svc"
+    local dst="/etc/dinit.d/$svc"
+    if [ -f "$src" ] && [ ! -e "$dst" ]; then
+        ln -sf "$src" "$dst"
+        echo "enabled dinit service: $svc"
+    fi
+}
+
+# Detect the chosen desktop by what the packages step installed.
+#
+# All desktops now use SDDM. Detection: bluedevil (KDE) > any other desktop.
+if pacman -Q bluedevil >/dev/null 2>&1; then
+    # KDE -> keep Plasma, enable SDDM.
+    enable_dinit sddm
+elif pacman -Q plasma-desktop >/dev/null 2>&1 || pacman -Q gnome-shell >/dev/null 2>&1 || pacman -Q hyprland >/dev/null 2>&1 || pacman -Q niri >/dev/null 2>&1 || pacman -Q xfce4 >/dev/null 2>&1 || pacman -Q cinnamon >/dev/null 2>&1 || pacman -Q mate >/dev/null 2>&1 || pacman -Q budgie-desktop >/dev/null 2>&1 || pacman -Q i3-wm >/dev/null 2>&1 || pacman -Q lxqt-session >/dev/null 2>&1 || pacman -Q lxsession >/dev/null 2>&1; then
+    # Non-KDE desktop -> drop the leaked Plasma stack but keep SDDM.
+    remove_pkgs $live_kde_pkgs
+    enable_dinit sddm
+    # Kyon GNOME ricing
+    if pacman -Q gnome-shell >/dev/null 2>&1; then
+        if [ -n "${1:-}" ] && command -v runuser >/dev/null 2>&1 && command -v dbus-run-session >/dev/null 2>&1; then
+            kyon_wp="file:///usr/share/wallpapers/KyonDefault/contents/images/1920x1080.png"
+            runuser -u "$1" -- dbus-run-session -- gsettings set org.gnome.desktop.background picture-uri "$kyon_wp" >/dev/null 2>&1 || true
+            runuser -u "$1" -- dbus-run-session -- gsettings set org.gnome.desktop.background picture-uri-dark "$kyon_wp" >/dev/null 2>&1 || true
+            runuser -u "$1" -- dbus-run-session -- gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
+            runuser -u "$1" -- dbus-run-session -- gsettings set org.gnome.shell enabled-extensions "['ding@rastersoft.com']" >/dev/null 2>&1 || true
+        fi
+    fi
+else
+    # "No Desktop" -> drop leaked Plasma + SDDM for text mode.
+    remove_pkgs $live_kde_pkgs sddm
+fi
+
+exit 0

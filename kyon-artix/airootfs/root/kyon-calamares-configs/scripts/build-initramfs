@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ ! -f /boot/vmlinuz-linux ]; then
+    k="$(ls -d /usr/lib/modules/*/ 2>/dev/null | sort | tail -n 1 || true)"
+    if [ -n "$k" ] && [ -f "${k}vmlinuz" ]; then
+        install -Dm644 "${k}vmlinuz" /boot/vmlinuz-linux
+    fi
+fi
+
+/usr/bin/mkinitcpio -P

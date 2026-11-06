@@ -1,0 +1,10 @@
+# Dinit service: local service bundle
+# Replaces systemd's local.service / multi-user.target
+# Services started at "multi-user" equivalent are enabled here.
+
+type = internal
+description = "Local services (multi-user equivalent)"
+depends = dinit-service-manager
+
+# Services that should start in non-graphical multi-user mode
+wants = networkmanager bluetooth cups avahi-daemon sshd

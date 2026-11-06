@@ -1,0 +1,7 @@
+# Dinit service: graphical login (graphical.target equivalent)
+# Starts SDDM display manager.
+
+type = internal
+description = "Graphical login"
+depends = local
+wants = sddm

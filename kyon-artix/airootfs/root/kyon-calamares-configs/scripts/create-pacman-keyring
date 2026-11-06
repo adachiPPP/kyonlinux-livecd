@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Redirect standard error to standard output since calamares doesn't
+# capture stderr
+exec 2>&1
+
+pacman-key --init
+
+# Update keyrings with retries in case of mirror issues.
+for ((i=0; i<5; i++)); do pacman -Sy --noconfirm --needed cachyos-keyring && break; done
+for ((i=0; i<5; i++)); do pacman -Sy --noconfirm --needed archlinux-keyring && break; done
+for ((i=0; i<5; i++)); do pacman -Sy --noconfirm --needed artix-keyring && break; done
+
+# chaotic-aur signing key.
+for ((i=0; i<5; i++)); do pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com && break; done
+pacman-key --lsign-key 3056513887B78AEB
+for ((i=0; i<5; i++)); do pacman -U --noconfirm --needed \
+    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && break; done
+
+pacman-key --populate

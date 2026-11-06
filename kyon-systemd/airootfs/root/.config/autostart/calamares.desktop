@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Kyon Linux Installer
+Comment=Launch Calamares Installer on boot
+Exec=calamares
+Icon=calamares
+Terminal=false
+Categories=System;
+# Wait for the Plasma session to be fully up (phase 2 runs after panels and
+# widgets are ready) before opening the installer window.
+X-KDE-autostart-phase=2
+OnlyShowIn=KDE;

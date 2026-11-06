@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: no
+# SPDX-License-Identifier: CC0-1.0
+#
+# Optional package groups shown on the netinstall page.
+#
+# The desktop groups are NOT listed here: they are delivered by the desktop
+# chooser (packagechooser_desktop.conf, method: netinstall-add) through the
+# "netinstallAdd" global-storage key and appear on this page pre-checked.
+#
+# Groups below are optional extras. `critical` is false so that a group whose
+# packages cannot be installed does not fail the whole installation
+# (critical groups become hard install requirements, non-critical ones are
+# installed best-effort).
+---
+- name: "Optional NVIDIA Drivers"
+  description: "Proprietary NVIDIA drivers and utilities for dedicated GPUs"
+  hidden: false
+  selected: false
+  critical: false
+  packages:
+    - nvidia-dkms
+    - nvidia-utils
+    - nvidia-settings
+    - lib32-nvidia-utils
+    - egl-wayland
+
+- name: "NVIDIA 340xx Drivers (Tesla Architecture)(x11 recommended)"
+  description: "Proprietary drivers for Tesla generation GPUs (GeForce 8/9/200/300 series) (use x11 (lxde lxqt xfce))"
+  hidden: false
+  selected: false
+  critical: false
+  packages:
+    - nvidia-340xx-dkms
+
+- name: "NVIDIA 390xx Drivers (Fermi Architecture)(x11 recommended)"
+  description: "Proprietary drivers for Fermi generation GPUs (GeForce 400/500 series) (use x11 (lxde lxqt xfce))"
+  hidden: false
+  selected: false
+  critical: false
+  packages:
+    - nvidia-390xx-dkms
+
+- name: "NVIDIA 470xx Drivers (Kepler Architecture)(x11 recommended)"
+  description: "Proprietary drivers for Kepler generation GPUs (GeForce 600/700 series) (use x11 (lxde lxqt xfce))"
+  hidden: false
+  selected: false
+  critical: false
+  packages:
+    - nvidia-470xx-dkms
+
+- name: "NVIDIA 580xx Drivers (Blackwell/Ada Architecture)"
+  description: "Proprietary drivers for modern NVIDIA architectures including Blackwell and Ada Lovelace"
+  hidden: false
+  selected: false
+  critical: false
+  packages:
+    - nvidia-580xx-dkms
+
+- name: "Terminal Emulators"
+  description: "Choose the terminal emulators you want installed on the system"
+  hidden: false
+  selected: true
+  critical: false
+  packages:
+    - kitty
+    - alacritty
+    - konsole
+
+- name: "Web Browsers"
+  description: "Choose the web browsers you want installed on the system"
+  hidden: false
+  selected: true
+  critical: false
+  packages:
+    - firefox
+    - zen-browser-bin
+    - helium-bin
